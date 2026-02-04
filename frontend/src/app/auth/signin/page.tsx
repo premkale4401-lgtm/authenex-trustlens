@@ -30,7 +30,7 @@ export default function SignIn() {
     setError("");
     try {
       const result = await signIn("google", { 
-        callbackUrl: "/",
+        callbackUrl: "/dashboard",
         redirect: true 
       });
       console.log("Google sign in result:", result);
@@ -55,7 +55,7 @@ export default function SignIn() {
       const result = await signIn("credentials", { 
         email, 
         password: "test",
-        callbackUrl: "/",
+        callbackUrl: "/dashboard",
         redirect: true
       });
       console.log("Credentials sign in result:", result);
