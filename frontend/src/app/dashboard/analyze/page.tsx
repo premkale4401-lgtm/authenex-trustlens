@@ -16,7 +16,10 @@ import {
   Scan,
   Brain,
   FileSearch,
-  ArrowRight
+  ArrowRight,
+  Mic,
+  Mail,
+  MessageSquare
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 
@@ -24,6 +27,9 @@ const analysisTypes = [
   { id: "image", label: "Image Forensics", icon: ImageIcon, desc: "Detect manipulation, deepfakes, and metadata analysis" },
   { id: "video", label: "Video Analysis", icon: Video, desc: "Frame-by-frame verification and temporal consistency" },
   { id: "document", label: "Document Check", icon: FileText, desc: "PDF integrity and digital signature verification" },
+  { id: "audio", label: "Audio Forensics", icon: Mic, desc: "Voice cloning detection and waveform analysis" },
+  { id: "email", label: "Email Verification", icon: Mail, desc: "Phishing detection and sender identity verification" },
+  { id: "text", label: "Text Detection", icon: MessageSquare, desc: "AI-generated text detection (LLM forensics)" },
 ];
 
 const analysisSteps = [
@@ -44,9 +50,21 @@ export default function AnalyzePage() {
     setFiles(prev => [...prev, ...acceptedFiles]);
   }, []);
 
+  const getAccept = (): Record<string, string[]> => {
+    switch (selectedType) {
+      case 'image': return { 'image/*': [] };
+      case 'video': return { 'video/*': [] };
+      case 'document': return { 'application/pdf': [] };
+      case 'audio': return { 'audio/*': [] };
+      case 'email': return { '.eml': [], '.msg': [] };
+      case 'text': return { 'text/plain': [], 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [] };
+      default: return { 'image/*': [] };
+    }
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: selectedType === 'image' ? { 'image/*': [] } : selectedType === 'video' ? { 'video/*': [] } : { 'application/pdf': [] },
+    accept: getAccept(),
     multiple: true
   });
 
@@ -167,9 +185,12 @@ export default function AnalyzePage() {
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center">
-                          {selectedType === 'image' ? <ImageIcon className="w-5 h-5 text-purple-400" /> :
-                           selectedType === 'video' ? <Video className="w-5 h-5 text-rose-400" /> :
-                           <FileText className="w-5 h-5 text-amber-400" />}
+                          {selectedType === 'image' && <ImageIcon className="w-5 h-5 text-purple-400" />}
+                          {selectedType === 'video' && <Video className="w-5 h-5 text-rose-400" />}
+                          {selectedType === 'document' && <FileText className="w-5 h-5 text-amber-400" />}
+                          {selectedType === 'audio' && <Mic className="w-5 h-5 text-sky-400" />}
+                          {selectedType === 'email' && <Mail className="w-5 h-5 text-emerald-400" />}
+                          {selectedType === 'text' && <MessageSquare className="w-5 h-5 text-indigo-400" />}
                         </div>
                         <div>
                           <p className="text-sm font-medium text-white truncate max-w-[200px] sm:max-w-xs">{file.name}</p>
