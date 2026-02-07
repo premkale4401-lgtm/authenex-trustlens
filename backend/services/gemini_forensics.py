@@ -20,8 +20,8 @@ if not API_KEY:
 
 genai.configure(api_key=API_KEY)
 
-# Strong multimodal reasoning model
-model = genai.GenerativeModel("models/gemini-2.5-flash-image")
+# Strong multimodal reasoning model (User requested 2.5 Pro)
+model = genai.GenerativeModel("models/gemini-2.5-pro")
 
 
 

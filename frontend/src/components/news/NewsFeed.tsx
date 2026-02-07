@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { getNews, NewsCategory, NewsItem } from '@/lib/news-service';
 import NewsCard from './NewsCard';
-import { LucideIcon, Activity, AlertTriangle, Cpu, Radio } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { Newspaper, Shield, Cpu, Scale, Briefcase, MessageCircle, Globe } from 'lucide-react';
 
 export default function NewsFeed() {
   const [activeCategory, setActiveCategory] = useState<NewsCategory | 'all'>('all');
@@ -15,7 +15,7 @@ export default function NewsFeed() {
     const fetchNews = async () => {
       setLoading(true);
       try {
-        const data = await getNews(activeCategory);
+        const data = await getNews(activeCategory, 50); 
         setNews(data);
       } catch (error) {
         console.error("Failed to fetch news", error);
@@ -27,53 +27,50 @@ export default function NewsFeed() {
     fetchNews();
   }, [activeCategory]);
 
-  const tabs: { id: NewsCategory | 'all'; label: string; icon: LucideIcon }[] = [
-    { id: 'all', label: 'All Updates', icon: Activity },
-    { id: 'deepfake', label: 'Deepfakes', icon: Radio },
-    { id: 'cybercrime', label: 'Cybercrime', icon: AlertTriangle },
-    { id: 'ai', label: 'AI News', icon: Cpu },
+  const categories = [
+    { id: 'all', label: 'Top Stories', icon: Globe },
+    { id: 'deepfake', label: 'Deepfakes', icon: Newspaper },
+    { id: 'cybercrime', label: 'Cybercrime', icon: Shield },
+    { id: 'ai', label: 'AI Security', icon: Cpu },
+    { id: 'government', label: 'Policy', icon: Scale },
+    { id: 'cases', label: 'Cases', icon: Briefcase },
+    { id: 'social', label: 'Social', icon: MessageCircle },
   ];
 
+
+
   return (
-    <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/50 p-2 rounded-xl border border-slate-800/50 backdrop-blur-sm">
-        <div className="flex items-center gap-1 w-full sm:w-auto overflow-x-auto no-scrollbar mask-gradient">
-          {tabs.map((tab) => (
+    <div className="space-y-8">
+      {/* Premium Filter Bar */}
+      <div className="sticky top-4 z-30 bg-slate-950/80 backdrop-blur-xl p-1.5 rounded-2xl border border-slate-800/60 shadow-2xl flex flex-nowrap overflow-x-auto no-scrollbar gap-1">
+        {categories.map((category) => {
+          const Icon = category.icon;
+          return (
             <button
-              key={tab.id}
-              onClick={() => setActiveCategory(tab.id)}
+              key={category.id}
+              onClick={() => setActiveCategory(category.id as NewsCategory | 'all')}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
-                activeCategory === tab.id
-                  ? "bg-sky-500/10 text-sky-400 border border-sky-500/20 shadow-sm shadow-sky-500/10"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                "px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 whitespace-nowrap",
+                activeCategory === category.id
+                  ? "bg-slate-800 text-white shadow-lg ring-1 ring-slate-700"
+                  : "text-slate-400 hover:text-white hover:bg-slate-900"
               )}
             >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
+              <Icon className={cn("w-4 h-4", activeCategory === category.id ? "text-sky-400" : "")} />
+              {category.label}
             </button>
-          ))}
-        </div>
-        
-        <div className="flex items-center gap-2 text-xs text-slate-500 px-2">
-            <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            Live Updates Open
-        </div>
+          );
+        })}
       </div>
 
-      {/* Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           {[1, 2, 3, 4].map((i) => (
-             <div key={i} className="h-64 rounded-xl bg-slate-900/30 animate-pulse border border-slate-800/50" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+           {[1, 2, 3, 4, 5, 6].map((i) => (
+             <div key={i} className="h-[350px] bg-slate-900/50 rounded-2xl border border-slate-800" />
            ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {news.map((item) => (
             <NewsCard key={item.id} news={item} />
           ))}

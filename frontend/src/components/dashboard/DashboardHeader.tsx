@@ -14,9 +14,11 @@ import {
 
   User,
   Clock,
-  ArrowUpRight
+  ArrowUpRight,
+  LogOut,
+  Settings
 } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { format } from "date-fns";
 
@@ -24,6 +26,7 @@ export default function DashboardHeader() {
   const { data: session } = useSession();
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     { id: 1, title: "Analysis Complete", message: "Image verification finished with 98% authenticity", time: "2 min ago", read: false, type: "success" },
     { id: 2, title: "New Case Assigned", message: "Case #2045 requires your review", time: "1 hour ago", read: false, type: "info" },
@@ -170,20 +173,70 @@ export default function DashboardHeader() {
         </div>
 
         {/* User Profile */}
-        <div className="flex items-center gap-3 pl-3 border-l border-slate-800">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-white">{session?.user?.name || "Investigator"}</p>
-            <p className="text-xs text-slate-400">Forensic Analyst</p>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 p-0.5 cursor-pointer hover:scale-105 transition-transform">
-            <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
-              {session?.user?.image ? (
-                <img src={session.user.image} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <User className="w-5 h-5 text-slate-300" />
-              )}
+        <div className="relative ml-2">
+          <button 
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="flex items-center gap-3 pl-3 border-l border-slate-800 outline-none"
+          >
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-medium text-white">{session?.user?.name || "Investigator"}</p>
+              <p className="text-xs text-slate-400">Forensic Analyst</p>
             </div>
-          </div>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 p-0.5 cursor-pointer hover:scale-105 transition-transform">
+              <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
+                {session?.user?.image ? (
+                  <img 
+                    src={session.user.image} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <User className="w-5 h-5 text-slate-300" />
+                )}
+              </div>
+            </div>
+          </button>
+
+          <AnimatePresence>
+            {userMenuOpen && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-40"
+                  onClick={() => setUserMenuOpen(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-xl shadow-black/50 overflow-hidden z-50 divide-y divide-slate-800"
+                >
+                  <div className="p-2">
+                    <Link 
+                      href="/dashboard/profile"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all group"
+                    >
+                      <User className="w-4 h-4 text-slate-400 group-hover:text-sky-400" />
+                      <span className="text-sm font-medium">Profile</span>
+                    </Link>
+
+                  </div>
+                  <div className="p-2">
+                    <button
+                      onClick={() => signOut({ callbackUrl: "/" })}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all group"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span className="text-sm font-medium">Sign Out</span>
+                    </button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

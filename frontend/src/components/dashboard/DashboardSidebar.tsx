@@ -20,11 +20,10 @@ import {
 import { signOut } from "next-auth/react";
 
 const navItems = [
-  { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/dashboard", icon: Newspaper },
   { name: "New Analysis", href: "/dashboard/analyze", icon: Scan },
   { name: "My Cases", href: "/dashboard/cases", icon: FolderKanban },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-  { name: "Live Updates", href: "/dashboard/news", icon: Newspaper },
 ];
 
 const bottomItems = [
@@ -132,21 +131,7 @@ export default function DashboardSidebar({
               );
             })}
             
-            <button
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all group mt-2"
-            >
-              <LogOut className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="font-medium text-sm whitespace-nowrap"
-                >
-                  Sign Out
-                </motion.span>
-              )}
-            </button>
+
           </div>
         </div>
 

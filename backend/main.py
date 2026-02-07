@@ -240,3 +240,55 @@ async def analyze_document_api(file: UploadFile = File(...)):
         "explanation": explanation,
         "details": data
     }
+
+
+# //////////////////////////////////////////////////////////////
+# NEWS API - Live updates on AI, deepfakes, cybercrime
+# //////////////////////////////////////////////////////////////
+
+from services.news_api import get_news_cached
+
+@app.get("/api/news")
+async def get_news_api(category: str = "all", limit: int = 20):
+    """
+    Get live news about AI, deepfakes, and cybercrime
+    Results are cached for 6 hours to minimize API costs
+    
+    Categories: all, deepfake, cybercrime, ai
+    """
+    try:
+        news_items = get_news_cached(category, limit)
+        return {
+            "success": True,
+            "category": category,
+            "count": len(news_items),
+            "news": news_items
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "news": []
+        }
+# //////////////////////////////////////////////////////////////
+# AUTHENEX AI CHATBOT - Forensic Assistant
+# //////////////////////////////////////////////////////////////
+
+from services.chat_service import get_chat_response
+from pydantic import BaseModel
+from typing import List, Optional
+
+class ChatRequest(BaseModel):
+    message: str
+    history: List[dict] = []
+    mode: str = "text"
+
+@app.post("/api/chat")
+async def chat_endpoint(request: ChatRequest):
+    """
+    Authenex AI Chat Endpoint
+    Accepts: message, history, mode (text/voice)
+    Returns: response (text)
+    """
+    result = await get_chat_response(request.message, request.history, request.mode)
+    return result
