@@ -1,294 +1,151 @@
-import os
-from fastapi import FastAPI, UploadFile, File, HTTPException
+"""
+Professional FastAPI Backend for Authenex
+Clean, reliable, and fully functional
+"""
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import google.generativeai as genai
+from PIL import Image
+import io
+import os
+import json
+import re
 from dotenv import load_dotenv
-from datetime import datetime
 
-from services.gemini_forensics import analyze_image
-from services.text_forensics import analyze_text
-from services.email_forensics import analyze_email
-
-from core.trust_engine import compute_trust
-from core.explainability import generate_explanation
-from utils.file_utils import save_upload_file, get_file_type
-
-# --------------------------------------------------
-# App setup
-# --------------------------------------------------
-
+# Load environment variables
 load_dotenv()
 
-app = FastAPI(
-    title="Authenex – Digital Trust Engine",
-    description="Explainable AI system for detecting AI-generated and manipulated content",
-    version="1.0.0"
-)
+# Initialize FastAPI
+app = FastAPI(title="Authenex AI Analysis API", version="1.0.0")
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+# Configure Gemini
+API_KEY = os.getenv("GEMINI_API_KEY")
+if not API_KEY:
+    print("❌ WARNING: GEMINI_API_KEY not found in .env file!")
+else:
+    genai.configure(api_key=API_KEY)
+    print("✅ Gemini API configured")
 
-# --------------------------------------------------
-# ROOT
-# --------------------------------------------------
+# Pydantic models
+class AnalysisResponse(BaseModel):
+    trust_score: float
+    deepfake_probability: float
+    verdict: str
+    explanation: str
+    details: dict
 
 @app.get("/")
-def root():
+async def root():
+    """Health check"""
     return {
-        "message": "Authenex backend is running",
-        "supported_endpoints": [
-            "/analyze (image)",
-            "/analyze-text (AI text)",
-            "/analyze-email (phishing email)"
-        ]
+        "service": "Authenex Backend",
+        "status": "running",
+        "version": "1.0.0",
+        "gemini_configured": bool(API_KEY)
     }
 
-# --------------------------------------------------
-# IMAGE ANALYSIS (EXISTING – DO NOT BREAK)
-# --------------------------------------------------
-
-@app.post("/analyze")
-async def analyze_image_api(file: UploadFile = File(...)):
-    # Validate file type
-    file_type = get_file_type(file.filename)
-    if file_type != "image":
-        raise HTTPException(
-            status_code=415,
-            detail="This endpoint currently supports image analysis only"
-        )
-
-    # Save file
-    file_path = save_upload_file(file, UPLOAD_DIR)
-
-    # Run image forensics
-    data = analyze_image(file_path)
-
-    # Trust computation
-    trust_score, verdict, ai_prob, data = compute_trust(data)
-    explanation = generate_explanation(data, ai_prob)
-
-    return {
-        "file_name": file.filename,
-        "file_type": "image",
-        "trust_score": trust_score,
-        "deepfake_probability": ai_prob,
-        "verdict": verdict,
-        "explanation": explanation,
-        "details": data,
-        "analyzed_at": datetime.utcnow().isoformat() + "Z"
-    }
-
-# --------------------------------------------------
-# TEXT ANALYSIS (AI-GENERATED TEXT)
-# --------------------------------------------------
-
-@app.post("/analyze-text")
-async def analyze_text_api(payload: dict):
-    text = payload.get("text", "").strip()
-
-    if len(text) < 50:
-        raise HTTPException(
-            status_code=400,
-            detail="Text too short for reliable analysis"
-        )
-
-    # Run text forensics
-    data = analyze_text(text)
-
-    # Trust computation
-    trust_score, verdict, ai_prob, data = compute_trust(data)
-    explanation = generate_explanation(data, ai_prob)
-
-    return {
-        "content_type": "text",
-        "trust_score": trust_score,
-        "deepfake_probability": ai_prob,
-        "verdict": verdict,
-        "explanation": explanation,
-        "details": data,
-        "analyzed_at": datetime.utcnow().isoformat() + "Z"
-    }
-
-# --------------------------------------------------
-# EMAIL ANALYSIS (PHISHING / FAKE EMAILS)
-# --------------------------------------------------
-
-@app.post("/analyze-email")
-async def analyze_email_api(payload: dict):
-    email_text = payload.get("email", "").strip()
-
-    if len(email_text) < 50:
-        raise HTTPException(
-            status_code=400,
-            detail="Email content too short for analysis"
-        )
-
-    # Run email forensics
-    data = analyze_email(email_text)
-
-    # Trust computation
-    trust_score, verdict, ai_prob, data = compute_trust(data)
-    explanation = generate_explanation(data, ai_prob)
-
-    return {
-        "content_type": "email",
-        "trust_score": trust_score,
-        "deepfake_probability": ai_prob,
-        "verdict": verdict,
-        "explanation": explanation,
-        "details": data,
-        "analyzed_at": datetime.utcnow().isoformat() + "Z"
-    }
-
-# ////////////////////////////////////
-from services.video_forensics import analyze_video
-
-@app.post("/analyze-video")
-async def analyze_video_api(file: UploadFile = File(...)):
-    file_type = get_file_type(file.filename)
-
-    if file_type != "video":
-        raise HTTPException(
-            status_code=415,
-            detail="Unsupported file type for video analysis"
-        )
-
-    video_path = save_upload_file(file, UPLOAD_DIR)
-
-    data = analyze_video(video_path)
-    trust_score, verdict, ai_prob, data = compute_trust(data)
-    explanation = generate_explanation(data, ai_prob)
-
-    return {
-        "file_name": file.filename,
-        "content_type": "video",
-        "trust_score": trust_score,
-        "deepfake_probability": ai_prob,
-        "verdict": verdict,
-        "explanation": explanation,
-        "details": data,
-        "analyzed_at": datetime.utcnow().isoformat() + "Z"
-    }
-# ///////////////////////////////////////////
-
-from services.audio_forensics import analyze_audio
-
-@app.post("/analyze-audio")
-async def analyze_audio_api(file: UploadFile = File(...)):
-    file_type = get_file_type(file.filename)
-
-    if file_type != "audio":
-        raise HTTPException(
-            status_code=415,
-            detail="Unsupported file type for audio analysis"
-        )
-
-    audio_path = save_upload_file(file, UPLOAD_DIR)
-
-    data = analyze_audio(audio_path)
-    trust_score, verdict, ai_prob, data = compute_trust(data)
-    explanation = generate_explanation(data, ai_prob)
-
-    return {
-        "file_name": file.filename,
-        "content_type": "audio",
-        "trust_score": trust_score,
-        "deepfake_probability": ai_prob,
-        "verdict": verdict,
-        "explanation": explanation,
-        "details": data
-    }
-
-
-# //////////////////////////////////////////////////////////////
-
-
-from services.document_forensics import analyze_document
-
-@app.post("/analyze-document")
-async def analyze_document_api(file: UploadFile = File(...)):
-    file_type = get_file_type(file.filename)
-
-    if file_type not in ["document"]:
-        raise HTTPException(
-            status_code=415,
-            detail="Unsupported file type for document analysis"
-        )
-
-    doc_path = save_upload_file(file, UPLOAD_DIR)
-
-    # Determine extension
-    ext = file.filename.lower().split(".")[-1]
-    data = analyze_document(doc_path, ext)
-
-    trust_score, verdict, ai_prob, data = compute_trust(data)
-    explanation = generate_explanation(data, ai_prob)
-
-    return {
-        "file_name": file.filename,
-        "content_type": "document",
-        "trust_score": trust_score,
-        "deepfake_probability": ai_prob,
-        "verdict": verdict,
-        "explanation": explanation,
-        "details": data
-    }
-
-
-# //////////////////////////////////////////////////////////////
-# NEWS API - Live updates on AI, deepfakes, cybercrime
-# //////////////////////////////////////////////////////////////
-
-from services.news_api import get_news_cached
-
-@app.get("/api/news")
-async def get_news_api(category: str = "all", limit: int = 20):
+@app.post("/analyze", response_model=AnalysisResponse)
+async def analyze_image(file: UploadFile = File(...)):
     """
-    Get live news about AI, deepfakes, and cybercrime
-    Results are cached for 6 hours to minimize API costs
+    Analyze an image for AI generation indicators
+    Returns comprehensive forensic analysis
+    """
+    if not API_KEY:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
     
-    Categories: all, deepfake, cybercrime, ai
-    """
     try:
-        news_items = get_news_cached(category, limit)
-        return {
-            "success": True,
-            "category": category,
-            "count": len(news_items),
-            "news": news_items
+        print(f"📤 Received file: {file.filename}")
+        
+        # Read and validate image
+        contents = await file.read()
+        image = Image.open(io.BytesIO(contents))
+        print(f"✅ Image loaded: {image.size}, {image.mode}")
+        
+        # Initialize Gemini model
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        print("✅ Gemini model initialized")
+        
+        # Forensic analysis prompt
+        prompt = """Analyze this image for AI generation indicators.
+
+Examine:
+- Visual artifacts (smoothing, unnatural textures)
+- Anatomical issues (if human subjects)
+- Technical markers (noise, compression, edges)
+- AI signatures (diffusion patterns, GAN artifacts)
+
+Return ONLY valid JSON (no markdown):
+{
+  "verdict": "Likely AI-Generated" | "Likely Human-Created" | "Uncertain",
+  "confidence": <0-100>,
+  "reasoning": "<detailed 2-3 sentence explanation>",
+  "findings": [<array of specific issues found>],
+  "parameters": {
+    "texture_quality": <0-100>,
+    "edge_consistency": <0-100>,
+    "lighting_coherence": <0-100>,
+    "anatomical_accuracy": <0-100 or null>,
+    "noise_pattern": <0-100>
+  }
+}"""
+        
+        # Generate analysis
+        print("🔍 Calling Gemini API...")
+        response = model.generate_content([prompt, image])
+        raw_text = response.text
+        print(f"✅ API responded ({len(raw_text)} chars)")
+        
+        # Parse JSON response
+        clean_text = raw_text.strip()
+        clean_text = re.sub(r'```json\s*', '', clean_text)
+        clean_text = re.sub(r'```\s*', '', clean_text)
+        
+        try:
+            analysis = json.loads(clean_text)
+            print("✅ JSON parsed successfully")
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON parse error: {e}")
+            print(f"Raw text: {raw_text[:500]}")
+            raise HTTPException(status_code=502, detail="AI returned invalid JSON")
+        
+        # Validate required fields
+        if "verdict" not in analysis or "confidence" not in analysis:
+            raise HTTPException(status_code=502, detail="Missing required fields in analysis")
+        
+        # Transform to frontend format
+        result = {
+            "trust_score": 100 - analysis["confidence"] if analysis["verdict"] == "Likely AI-Generated" else analysis["confidence"],
+            "deepfake_probability": analysis["confidence"] if analysis["verdict"] == "Likely AI-Generated" else 100 - analysis["confidence"],
+            "verdict": analysis["verdict"],
+            "explanation": analysis.get("reasoning", "Analysis complete"),
+            "details": {
+                "findings": [
+                    {"category": "AI Detection", "score": 50, "reason": f} 
+                    for f in analysis.get("findings", [])
+                ],
+                **(analysis.get("parameters", {}))
+            }
         }
+        
+        print(f"✅ Analysis complete: {result['verdict']} ({result['deepfake_probability']:.1f}%)")
+        return result
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "news": []
-        }
-# //////////////////////////////////////////////////////////////
-# AUTHENEX AI CHATBOT - Forensic Assistant
-# //////////////////////////////////////////////////////////////
+        print(f"❌ Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
-from services.chat_service import get_chat_response
-from pydantic import BaseModel
-from typing import List, Optional
-
-class ChatRequest(BaseModel):
-    message: str
-    history: List[dict] = []
-    mode: str = "text"
-
-@app.post("/api/chat")
-async def chat_endpoint(request: ChatRequest):
-    """
-    Authenex AI Chat Endpoint
-    Accepts: message, history, mode (text/voice)
-    Returns: response (text)
-    """
-    result = await get_chat_response(request.message, request.history, request.mode)
-    return result
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -117,5 +117,6 @@ export default function DashboardPage() {
         <NewsFeed />
       </motion.div>
     </div>
+    
   );
 }

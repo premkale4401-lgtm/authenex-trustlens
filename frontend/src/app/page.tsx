@@ -12,6 +12,11 @@ import ProcessSection from "@/components/sections/ProcessSection";
 import StatsSection from "@/components/sections/StatsSection";
 import TestimonialsSection from "@/components/sections/TestimonialsSection";
 import CTASection from "@/components/sections/CTASection";
+
+
+
+
+
 export default function Home() {
   const [mounted, setMounted] = useState(false);
   const { data: session, status } = useSession();
@@ -34,6 +39,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#020617] overflow-x-hidden relative">
+
       {/* Background Layers */}
       <AuroraBackground />
       <ParticleNetwork />
